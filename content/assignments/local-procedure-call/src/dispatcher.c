@@ -13,28 +13,43 @@
 
 typedef struct ServiceArgs {
     pthread_mutex_t mutex;
-    int service_fd;
-    char service_fifo[32];
+    int install_req_fd;
+    int install_fd;
+    int callpipe_fd;
+    int returnpipe_fd;
+    char service_fifo[64];
     char buffer[64];
 } ServiceArgs;
 
 void server_thread(ServiceArgs *args) {
-    struct InstallRequestHeader IRH;
-    char path[128] = "../tests/";
-    strcpy(args->service_fifo, "../tests/.dispatcher/install_req_pipe");
+    struct InstallRequestHeader IRH = {0};
+    struct InstallHeader IH = {0};
+    strcpy(args->service_fifo, "../tests/dispatcher/install_req_pipe");
+    char path[128];
+    // memset(path, 0, 128);
+    // strcpy(path, "../tests/");
     while (true) {
         mkfifo(args->service_fifo, 0666);
-        args->service_fd = open(args->service_fifo, O_RDONLY);
-        read(args->service_fd, &IRH, sizeof(struct InstallRequestHeader));
-        read(args->service_fd, args->buffer, IRH.m_IpnLen);
-        printf("buffer: %s\n", args->buffer);
-        close(args->service_fd);
-        unlink(args->service_fifo);
-        strcat(path, args->buffer);
-        mkfifo(path, 0666);
-        printf("path: %s\n", path);
-        mkfifo("../tests/.pipes/hello_callpipe", 0666);
-        mkfifo("../tests/.pipes/hello_returnpipe", 0666);
+        args->install_req_fd = open(args->service_fifo, O_RDONLY);
+        read(args->install_req_fd, &IRH, sizeof(struct InstallRequestHeader));
+        read(args->install_req_fd, args->buffer, IRH.m_IpnLen);
+
+        mkfifo(args->buffer, 0666);
+        memset(path, 0, 128);
+        strcpy(path, "../tests/");
+        strcpy(path, args->buffer);
+        args->install_fd = open(args->buffer, O_RDONLY);
+        read(args->install_fd, &IH, sizeof(struct InstallHeader));
+        read(args->install_fd, args->buffer, IH.m_VersionLen);
+        read(args->install_fd, args->buffer, IH.m_CpnLen);
+        read(args->install_fd, args->buffer, IH.m_RpnLen);
+        read(args->install_fd, args->buffer, IH.m_ApLen);
+        printf("IH.m_VersionLen : %d", IH.m_VersionLen);
+        printf("IH.m_CpnLen : %d", IH.m_CpnLen);
+        printf("IH.m_RpnLen : %d", IH.m_RpnLen);
+        printf("IH.m_ApLen : %d", IH.m_ApLen);
+        mkfifo("../tests/.pipes/hello_pipe_in", 0666);
+        mkfifo("../tests/.pipes/hello_pipe_out", 0666);
         memset(args->buffer, 0, 64);
     }
 }
