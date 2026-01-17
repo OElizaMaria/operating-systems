@@ -6,33 +6,44 @@
 #include "protocol/components.h"
 
 
-void* foo(void* arg) {
-    printf("Thread de asteptare creat.");
-    return NULL;
- }
+
+typedef struct ServiceArgs {
+    pthread_mutex_t mutex;
+    int service_fd;
+    char service_fifo[32];
+} ServiceArgs;
+
+void server_thread(ServiceArgs *args) {
+    struct InstallRequestHeader IRH;
+    printf("test");
+
+    while (1) {
+        pthread_mutex_lock(&args->mutex);
+        strcpy(args->service_fifo, ".dispatcher/install_req_pipe");
+        mkfifo(args->service_fifo, 0666);
+        args->service_fd = open(args->service_fifo, O_RDONLY);
+        read(args->service_fd, &IRH, sizeof(struct InstallRequestHeader));
+        IRH.m_IpnLen = be32toh(IRH.m_IpnLen);
+    }
+}
+
+typedef struct ClientArgs {
+    pthread_mutex_t mutex;
+    int client_fd;
+    char client_fifo[32];
+} ClientArgs;
+
+void client_thread(ServiceArgs *args) {
+    
+}
+
 
 int main(void)
 {
-    pthread_t asteapta_thread_req;
-	int fd;
-	struct InstallRequestHeader hdr;
-	
-	// cream pipe ul pt req unde e scris
-
-	 char * myfifo = "./dispatcher/install_req_pipe";
-    mkfifo(myfifo, 0666);
-
-    pthread_create(&asteapta_thread_req, NULL, foo, NULL);
-	while(1){
-		// pune un mutex sa nu fie busy waiting
-		fd = open(myfifo, O_RDONLY);
-		uint16_t cat_citim;
-		read(fd, cat_citim, sizeof(uint16_t));
-		hdr.m_IpnLen = cat_citim;
-		
-		// citeste primu int16 si pune l in structura 
-
-	}
-
+ 
+    ServiceArgs *args = malloc(sizeof(ServiceArgs));
+    pthread_mutex_init(&args->mutex, 0);
+    pthread_t *service_thread = malloc(sizeof(pthread_t));
+    pthread_create(service_thread, NULL, (void *)server_thread, args);
 	return 0;
 }
