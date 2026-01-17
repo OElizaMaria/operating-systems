@@ -22,6 +22,8 @@ typedef struct ServiceArgs {
     char buffer[64];
 } ServiceArgs;
 
+
+
 void server_thread(ServiceArgs *args) {
     struct InstallRequestHeader IRH = {0};
     struct InstallHeader IH = {0};
@@ -35,13 +37,9 @@ void server_thread(ServiceArgs *args) {
         args->install_req_fd = open(args->service_fifo, O_RDONLY);
         read(args->install_req_fd, &IRH, sizeof(struct InstallRequestHeader));
         read(args->install_req_fd, args->buffer, IRH.m_IpnLen);
-        printf("buffer: %s\n", args->buffer);
-
         memset(path, 0, 128);
         strcpy(path, "../tests/");
-        printf("path: %s\n", path);
         strcat(path, args->buffer);
-        printf("path: %s\n", path);
         mkfifo(path, 0666);
         args->install_fd = open(path, O_RDONLY);
         read(args->install_fd, &IH, sizeof(struct InstallHeader));
@@ -49,22 +47,31 @@ void server_thread(ServiceArgs *args) {
         read(args->install_fd, args->buffer, IH.m_VersionLen);
         memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, be16toh(IH.m_CpnLen));
+        memset(path, 0, 128);
+        strcpy(path, "../tests/");
+        strcat(path, args->buffer);
+        mkfifo(path, 0666);
+        args->callpipe_fd = open(path, O_WRONLY);
         memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, be16toh(IH.m_RpnLen));
+        memset(path, 0, 128);
+        strcpy(path, "../tests/");
+        strcat(path, args->buffer);
+        args->returnpipe_fd = open(path, O_RDONLY);
+        mkfifo(path, 0666);
         memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, be16toh(IH.m_ApLen));
-        mkfifo("../tests/.pipes/hello_pipe_in", 0666);
-        mkfifo("../tests/.pipes/hello_pipe_out", 0666);
         memset(args->buffer, 0, 64);
+        printf("service parsed\n");
     }
 }
 
 int main(void)
 {
-    ServiceArgs *args = malloc(sizeof(ServiceArgs));
-    pthread_mutex_init(&args->mutex, 0);
+    ServiceArgs *sevice_args = malloc(sizeof(ServiceArgs));
+    pthread_mutex_init(&sevice_args->mutex, 0);
     pthread_t *service_thread = malloc(sizeof(pthread_t));
-    pthread_create(service_thread, NULL, (void *)server_thread, args);
+    pthread_create(service_thread, NULL, (void *)server_thread, sevice_args);
     pthread_join(*service_thread, NULL);
 	return 0;
 }
