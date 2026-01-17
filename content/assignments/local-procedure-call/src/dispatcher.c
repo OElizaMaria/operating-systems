@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "protocol/components.h"
+#include <endian.h>
 #include <pthread.h>
 #include <bits/pthreadtypes.h>
 #include <fcntl.h>
@@ -46,16 +47,12 @@ void server_thread(ServiceArgs *args) {
         read(args->install_fd, &IH, sizeof(struct InstallHeader));
         memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, IH.m_VersionLen);
-        printf("buffer: %s\n", args->buffer);
         memset(args->buffer, 0, 64);
-        read(args->install_fd, args->buffer, IH.m_CpnLen);
-        printf("buffer: %s\n", args->buffer);
+        read(args->install_fd, args->buffer, be16toh(IH.m_CpnLen));
         memset(args->buffer, 0, 64);
-        read(args->install_fd, args->buffer, IH.m_RpnLen);
-        printf("buffer: %s\n", args->buffer);
+        read(args->install_fd, args->buffer, be16toh(IH.m_RpnLen));
         memset(args->buffer, 0, 64);
-        read(args->install_fd, args->buffer, IH.m_ApLen);
-        printf("buffer: %s\n", args->buffer);
+        read(args->install_fd, args->buffer, be16toh(IH.m_ApLen));
         mkfifo("../tests/.pipes/hello_pipe_in", 0666);
         mkfifo("../tests/.pipes/hello_pipe_out", 0666);
         memset(args->buffer, 0, 64);
