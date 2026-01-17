@@ -24,30 +24,38 @@ typedef struct ServiceArgs {
 void server_thread(ServiceArgs *args) {
     struct InstallRequestHeader IRH = {0};
     struct InstallHeader IH = {0};
-    strcpy(args->service_fifo, "../tests/dispatcher/install_req_pipe");
+    strcpy(args->service_fifo, "../tests/.dispatcher/install_req_pipe");
     char path[128];
     // memset(path, 0, 128);
     // strcpy(path, "../tests/");
     while (true) {
+        memset(args->buffer, 0, 64);
         mkfifo(args->service_fifo, 0666);
         args->install_req_fd = open(args->service_fifo, O_RDONLY);
         read(args->install_req_fd, &IRH, sizeof(struct InstallRequestHeader));
         read(args->install_req_fd, args->buffer, IRH.m_IpnLen);
+        printf("buffer: %s\n", args->buffer);
 
-        mkfifo(args->buffer, 0666);
         memset(path, 0, 128);
         strcpy(path, "../tests/");
-        strcpy(path, args->buffer);
-        args->install_fd = open(args->buffer, O_RDONLY);
+        printf("path: %s\n", path);
+        strcat(path, args->buffer);
+        printf("path: %s\n", path);
+        mkfifo(path, 0666);
+        args->install_fd = open(path, O_RDONLY);
         read(args->install_fd, &IH, sizeof(struct InstallHeader));
+        memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, IH.m_VersionLen);
+        printf("buffer: %s\n", args->buffer);
+        memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, IH.m_CpnLen);
+        printf("buffer: %s\n", args->buffer);
+        memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, IH.m_RpnLen);
+        printf("buffer: %s\n", args->buffer);
+        memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, IH.m_ApLen);
-        printf("IH.m_VersionLen : %d", IH.m_VersionLen);
-        printf("IH.m_CpnLen : %d", IH.m_CpnLen);
-        printf("IH.m_RpnLen : %d", IH.m_RpnLen);
-        printf("IH.m_ApLen : %d", IH.m_ApLen);
+        printf("buffer: %s\n", args->buffer);
         mkfifo("../tests/.pipes/hello_pipe_in", 0666);
         mkfifo("../tests/.pipes/hello_pipe_out", 0666);
         memset(args->buffer, 0, 64);
