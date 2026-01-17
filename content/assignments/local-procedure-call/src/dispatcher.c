@@ -27,14 +27,23 @@ void server_thread(ServiceArgs *args) {
     }
 }
 
+
 typedef struct ClientArgs {
     pthread_mutex_t mutex;
     int client_fd;
     char client_fifo[32];
 } ClientArgs;
 
+
 void client_thread(ServiceArgs *args) {
-    
+    struct ConnectionRequestHeader CRH;
+	while(1){
+		strcpy(args->service_fifo, ".dispatcher/connection_req_pipe");
+        mkfifo(args->service_fifo, 0666);
+		args->service_fd = open(args->service_fifo, O_RDONLY);
+		read(args->service_fd, &CRH,sizeof(struct ConnectionRequestHeader));
+		CRH.m_RpnLen = be32toh(CRH.m_RpnLen);
+	}
 }
 
 
