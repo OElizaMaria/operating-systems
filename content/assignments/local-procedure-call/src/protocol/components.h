@@ -17,7 +17,7 @@
 #define CALL_TOKEN_LEN 32
 
 #ifndef __packed
-// !!! A define needs to be added here
+#define __packed __attribute__((packed))
 #endif
 
 #define PACKED __packed
@@ -32,7 +32,8 @@
  * Install pipe name
  */
 struct InstallRequestHeader {
-	uint16_t m_IpnLen; /* The maximum length of the install pipe name */
+	uint16_t m_IpnLen;
+	 /* The maximum length of the install pipe name */
 } PACKED;
 
 /**
