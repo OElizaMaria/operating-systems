@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <errno.h>
 
 typedef struct ServiceArgs {
     int install_req_fd;
@@ -89,37 +90,15 @@ void client_thread(ClientArgs *args) {
         mkfifo(args->client_fifo, 0666);
         args->connect_req_fd = open(args->client_fifo, O_RDONLY);
         read(args->connect_req_fd, &CRH, sizeof(struct ConnectionRequestHeader));
-        printf("CRH.m_RpnLen: %d\n", CRH.m_RpnLen);
-        printf("CRH.m_ApLen: %d\n", CRH.m_ApLen);
-        read(args->connect_req_fd, args->buffer, be16toh(CRH.m_RpnLen));
+        read(args->connect_req_fd, args->buffer, be32toh(CRH.m_RpnLen));
         memset(path, 0, 128);
         strcpy(path, "../tests/");
         strcat(path, args->buffer);
+        // printf("test1\n");
+        printf("path: %s\n", path);
         mkfifo(path, 0666);
-        args->connect_fd = open(path, O_RDONLY);
-        read(args->connect_req_fd, args->buffer, be16toh(CRH.m_ApLen));
-        strcpy(args->access_path, args->buffer);
-        read(args->connect_fd, &CH, sizeof(struct ConnectHeader));
-        memset(args->buffer, 0, 64);
-        read(args->connect_fd, args->buffer, CH.m_VersionLen);
-        memset(args->buffer, 0, 64);
-        read(args->connect_fd, args->buffer, be16toh(CH.m_CpnLen));
-        memset(path, 0, 128);
-        strcpy(path, "../tests/");
-        strcat(path, args->buffer);
-        mkfifo(path, 0666);
-        args->callpipe_fd = open(path, O_WRONLY);
-        memset(args->buffer, 0, 64);
-        read(args->connect_fd, args->buffer, be16toh(CH.m_RpnLen));
-        memset(path, 0, 128);
-        strcpy(path, "../tests/");
-        strcat(path, args->buffer);
-        args->returnpipe_fd = open(path, O_RDONLY);
-        mkfifo(path, 0666);
-        memset(args->buffer, 0, 64);
-        printf("client parsed\n");
-        close(args->connect_fd);
-        close(args->connect_req_fd);
+        args->connect_fd = open(".pipes/connect_pipe0", O_WRONLY);
+        read(args->connect_req_fd, args->buffer, be32toh(CRH.m_ApLen));
     }
 }
 
