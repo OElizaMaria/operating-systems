@@ -20,20 +20,22 @@ typedef struct ServiceArgs {
 
 void server_thread(ServiceArgs *args) {
     struct InstallRequestHeader IRH;
-    pthread_mutex_lock(&args->mutex);
+    char path[128] = "../tests/";
     strcpy(args->service_fifo, "../tests/.dispatcher/install_req_pipe");
     while (true) {
         mkfifo(args->service_fifo, 0666);
         args->service_fd = open(args->service_fifo, O_RDONLY);
-        while (open(args->service_fifo, O_RDONLY)) {
-            read(args->service_fd, &IRH, sizeof(struct InstallRequestHeader));
-            // IRH.m_IpnLen = be32toh(IRH.m_IpnLen);
-            read(args->service_fd, args->buffer, IRH.m_IpnLen);
-            printf("buffer: %s\n", args->buffer);
-            close(args->service_fd);
-            unlink(args->service_fifo);
-        }
-        pthread_mutex_unlock(&args->mutex);
+        read(args->service_fd, &IRH, sizeof(struct InstallRequestHeader));
+        read(args->service_fd, args->buffer, IRH.m_IpnLen);
+        printf("buffer: %s\n", args->buffer);
+        close(args->service_fd);
+        unlink(args->service_fifo);
+        strcat(path, args->buffer);
+        mkfifo(path, 0666);
+        printf("path: %s\n", path);
+        mkfifo("../tests/.pipes/hello_callpipe", 0666);
+        mkfifo("../tests/.pipes/hello_returnpipe", 0666);
+        memset(args->buffer, 0, 64);
     }
 }
 
