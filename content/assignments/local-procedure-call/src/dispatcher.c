@@ -13,16 +13,24 @@
 #include <stdio.h>
 
 typedef struct ServiceArgs {
-    pthread_mutex_t mutex;
     int install_req_fd;
     int install_fd;
     int callpipe_fd;
     int returnpipe_fd;
+    char access_path[64];
     char service_fifo[64];
     char buffer[64];
 } ServiceArgs;
 
-
+typedef struct ClientArgs {
+    int connect_req_fd;
+    int connect_fd;
+    int callpipe_fd;
+    int returnpipe_fd;
+    char access_path[64];
+    char client_fifo[64];
+    char buffer[64];
+} ClientArgs;
 
 void server_thread(ServiceArgs *args) {
     struct InstallRequestHeader IRH = {0};
@@ -61,17 +69,73 @@ void server_thread(ServiceArgs *args) {
         mkfifo(path, 0666);
         memset(args->buffer, 0, 64);
         read(args->install_fd, args->buffer, be16toh(IH.m_ApLen));
+        strcpy(args->access_path, args->buffer);
         memset(args->buffer, 0, 64);
         printf("service parsed\n");
+        close(args->install_fd);
+        close(args->install_req_fd);
+    }
+}
+
+void client_thread(ClientArgs *args) {
+    struct ConnectionRequestHeader CRH = {0};
+    struct ConnectHeader CH = {0};
+    strcpy(args->client_fifo, "../tests/.dispatcher/connection_req_pipe");
+    char path[128];
+    // memset(path, 0, 128);
+    // strcpy(path, "../tests/");
+    while (true) {
+        memset(args->buffer, 0, 64);
+        mkfifo(args->client_fifo, 0666);
+        args->connect_req_fd = open(args->client_fifo, O_RDONLY);
+        read(args->connect_req_fd, &CRH, sizeof(struct ConnectionRequestHeader));
+        printf("CRH.m_RpnLen: %d\n", CRH.m_RpnLen);
+        printf("CRH.m_ApLen: %d\n", CRH.m_ApLen);
+        read(args->connect_req_fd, args->buffer, be16toh(CRH.m_RpnLen));
+        memset(path, 0, 128);
+        strcpy(path, "../tests/");
+        strcat(path, args->buffer);
+        mkfifo(path, 0666);
+        args->connect_fd = open(path, O_RDONLY);
+        read(args->connect_req_fd, args->buffer, be16toh(CRH.m_ApLen));
+        strcpy(args->access_path, args->buffer);
+        read(args->connect_fd, &CH, sizeof(struct ConnectHeader));
+        memset(args->buffer, 0, 64);
+        read(args->connect_fd, args->buffer, CH.m_VersionLen);
+        memset(args->buffer, 0, 64);
+        read(args->connect_fd, args->buffer, be16toh(CH.m_CpnLen));
+        memset(path, 0, 128);
+        strcpy(path, "../tests/");
+        strcat(path, args->buffer);
+        mkfifo(path, 0666);
+        args->callpipe_fd = open(path, O_WRONLY);
+        memset(args->buffer, 0, 64);
+        read(args->connect_fd, args->buffer, be16toh(CH.m_RpnLen));
+        memset(path, 0, 128);
+        strcpy(path, "../tests/");
+        strcat(path, args->buffer);
+        args->returnpipe_fd = open(path, O_RDONLY);
+        mkfifo(path, 0666);
+        memset(args->buffer, 0, 64);
+        printf("client parsed\n");
+        close(args->connect_fd);
+        close(args->connect_req_fd);
     }
 }
 
 int main(void)
 {
+    pthread_t *threads = calloc(2, sizeof(pthread_t));
+
     ServiceArgs *sevice_args = malloc(sizeof(ServiceArgs));
-    pthread_mutex_init(&sevice_args->mutex, 0);
-    pthread_t *service_thread = malloc(sizeof(pthread_t));
-    pthread_create(service_thread, NULL, (void *)server_thread, sevice_args);
-    pthread_join(*service_thread, NULL);
+    pthread_create(&threads[0], NULL, (void *)server_thread, sevice_args);
+
+    ClientArgs *client_args = malloc(sizeof(ClientArgs));
+    pthread_create(&threads[1], NULL, (void *)client_thread, client_args);
+
+    for (int i = 0; i < 2; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
 	return 0;
 }
