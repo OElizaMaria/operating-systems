@@ -19,15 +19,15 @@ typedef struct ServiceArgs {
 
 void server_thread(ServiceArgs *args) {
     struct InstallRequestHeader IRH;
-    printf("test");
-    while (true) {
-        pthread_mutex_lock(&args->mutex);
-        strcpy(args->service_fifo, ".dispatcher/install_req_pipe");
-        mkfifo(args->service_fifo, 0666);
-        args->service_fd = open(args->service_fifo, O_RDONLY);
-        read(args->service_fd, &IRH, sizeof(struct InstallRequestHeader));
-        IRH.m_IpnLen = be32toh(IRH.m_IpnLen);
-    }
+    pthread_mutex_lock(&args->mutex);
+    strcpy(args->service_fifo, "../tests/.dispatcher/install_req_pipe");
+    mkfifo(args->service_fifo, 0666);
+    args->service_fd = open(args->service_fifo, O_RDONLY);
+    read(args->service_fd, &IRH, sizeof(struct InstallRequestHeader));
+    IRH.m_IpnLen = be32toh(IRH.m_IpnLen);
+    printf("%s\n", args->service_fifo);
+    pthread_mutex_unlock(&args->mutex);
+
 }
 
 int main(void)
@@ -37,5 +37,6 @@ int main(void)
     pthread_mutex_init(&args->mutex, 0);
     pthread_t *service_thread = malloc(sizeof(pthread_t));
     pthread_create(service_thread, NULL, (void *)server_thread, args);
+    pthread_join(*service_thread, NULL);
 	return 0;
 }
